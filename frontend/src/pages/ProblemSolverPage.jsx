@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { problemService } from '../services';
 import { CodeEditor } from '../components/CodeEditor';
+import { useBackendStatus } from '../context/BackendContext';
 import { 
   ArrowLeft, Play, Send, RotateCcw, Clock, Pause, CheckCircle2, 
   XCircle, FileText, Lightbulb, History, Code2, Terminal,
@@ -11,6 +12,7 @@ import {
 export const ProblemSolverPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isOffline } = useBackendStatus();
 
   // Problem state
   const [problem, setProblem] = useState(null);
@@ -321,7 +323,7 @@ export const ProblemSolverPage = () => {
           {/* Action Buttons */}
           <button 
             onClick={handleRunCode} 
-            disabled={isRunning || isSubmitting}
+            disabled={isRunning || isSubmitting || isOffline}
             className="btn-run"
           >
             <Play size={14} />
@@ -330,7 +332,7 @@ export const ProblemSolverPage = () => {
 
           <button 
             onClick={handleSubmitCode} 
-            disabled={isRunning || isSubmitting}
+            disabled={isRunning || isSubmitting || isOffline}
             className="btn-submit"
           >
             <Send size={14} />

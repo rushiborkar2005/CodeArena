@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { problemService } from '../services';
 import { CodeEditor } from '../components/CodeEditor';
 import { useAuth } from '../context/AuthContext';
+import { useBackendStatus } from '../context/BackendContext';
 import { io } from 'socket.io-client';
 import { 
   ArrowLeft, Play, Send, RotateCcw, Clock, Pause, CheckCircle2, 
@@ -16,6 +17,7 @@ export const ArenaSolverPage = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { isOffline } = useBackendStatus();
 
   // Socket
   const [socket, setSocket] = useState(null);
@@ -261,7 +263,7 @@ export const ArenaSolverPage = () => {
 
           <button 
             onClick={handleRunCode} 
-            disabled={isRunning || isSubmitting}
+            disabled={isRunning || isSubmitting || isOffline}
             className="btn-run"
           >
             <Play size={14} />
@@ -270,7 +272,7 @@ export const ArenaSolverPage = () => {
 
           <button 
             onClick={handleSubmitCode} 
-            disabled={isRunning || isSubmitting}
+            disabled={isRunning || isSubmitting || isOffline}
             className="btn-submit"
             style={{ background: 'var(--accent-primary)', color: 'black' }}
           >
