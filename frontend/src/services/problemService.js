@@ -2,114 +2,29 @@ import apiClient from './apiClient';
 
 const starterTemplates = {
   'prob-1': {
-    c: `#include <stdio.h>
-#include <stdlib.h>
-
-/**
- * Note: The returned array must be malloced, assume caller calls free().
- */
-int* twoSum(int* nums, int numsSize, int target, int* returnSize) {
-    *returnSize = 2;
-    int* result = (int*)malloc(2 * sizeof(int));
-    for (int i = 0; i < numsSize; i++) {
-        for (int j = i + 1; j < numsSize; j++) {
-            if (nums[i] + nums[j] == target) {
-                result[0] = i;
-                result[1] = j;
-                return result;
-            }
-        }
-    }
-    return result;
-}`,
-    cpp: `#include <vector>
-#include <unordered_map>
-
-class Solution {
-public:
-    std::vector<int> twoSum(std::vector<int>& nums, int target) {
-        std::unordered_map<int, int> map;
-        for (int i = 0; i < nums.size(); i++) {
-            int diff = target - nums[i];
-            if (map.count(diff)) {
-                return {map[diff], i};
-            }
-            map[nums[i]] = i;
-        }
-        return {};
-    }
-};`,
-    java: `import java.util.HashMap;
-
-class Solution {
-    public int[] twoSum(int[] nums, int target) {
-        HashMap<Integer, Integer> map = new HashMap<>();
-        for (int i = 0; i < nums.length; i++) {
-            int diff = target - nums[i];
-            if (map.containsKey(diff)) {
-                return new int[] { map.get(diff), i };
-            }
-            map.put(nums[i], i);
-        }
-        return new int[]{};
-    }
-}`
+    c: `#include <stdio.h>\n#include <stdlib.h>\n\n/**\n * Note: The returned array must be malloced, assume caller calls free().\n */\nint* twoSum(int* nums, int numsSize, int target, int* returnSize) {\n    // Write your code here\n    *returnSize = 0;\n    return NULL;\n}`,
+    cpp: `#include <vector>\n\nclass Solution {\npublic:\n    std::vector<int> twoSum(std::vector<int>& nums, int target) {\n        // Write your code here\n        return {};\n    }\n};`,
+    java: `import java.util.*;\n\nclass Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n}`
   },
   'prob-2': {
-    c: `#include <stdbool.h>
-#include <string.h>
-
-bool isValid(char* s) {
-    int len = strlen(s);
-    char stack[len];
-    int top = -1;
-    for (int i = 0; i < len; i++) {
-        if (s[i] == '(' || s[i] == '{' || s[i] == '[') {
-            stack[++top] = s[i];
-        } else {
-            if (top == -1) return false;
-            if (s[i] == ')' && stack[top] != '(') return false;
-            if (s[i] == '}' && stack[top] != '{') return false;
-            if (s[i] == ']' && stack[top] != '[') return false;
-            top--;
-        }
-    }
-    return top == -1;
-}`,
-    cpp: `#include <stack>
-#include <unordered_map>
-#include <string>
-
-class Solution {
-public:
-    bool isValid(std::string s) {
-        std::stack<char> st;
-        std::unordered_map<char, char> map = {{')', '('}, {'}', '{'}, {']', '['}};
-        for (char c : s) {
-            if (map.count(c)) {
-                if (st.empty() || st.top() != map[c]) return false;
-                st.pop();
-            } else {
-                st.push(c);
-            }
-        }
-        return st.empty();
-    }
-};`,
-    java: `import java.util.Stack;
-
-class Solution {
-    public boolean isValid(String s) {
-        Stack<Character> stack = new Stack<>();
-        for (char c : s.toCharArray()) {
-            if (c == '(') stack.push(')');
-            else if (c == '{') stack.push('}');
-            else if (c == '[') stack.push(']');
-            else if (stack.isEmpty() || stack.pop() != c) return false;
-        }
-        return stack.isEmpty();
-    }
-}`
+    c: `#include <stdbool.h>\n#include <string.h>\n\nbool isValid(char* s) {\n    // Write your code here\n    return false;\n}`,
+    cpp: `#include <string>\n\nclass Solution {\npublic:\n    bool isValid(std::string s) {\n        // Write your code here\n        return false;\n    }\n};`,
+    java: `import java.util.*;\n\nclass Solution {\n    public boolean isValid(String s) {\n        // Write your code here\n        return false;\n    }\n}`
+  },
+  'prob-3': {
+    c: `#include <stdio.h>\n#include <string.h>\n\nint lengthOfLongestSubstring(char* s) {\n    // Write your code here\n    return 0;\n}`,
+    cpp: `#include <string>\n\nclass Solution {\npublic:\n    int lengthOfLongestSubstring(std::string s) {\n        // Write your code here\n        return 0;\n    }\n};`,
+    java: `import java.util.*;\n\nclass Solution {\n    public int lengthOfLongestSubstring(String s) {\n        // Write your code here\n        return 0;\n    }\n}`
+  },
+  'prob-4': {
+    c: `#include <stdio.h>\n\nint maxArea(int* height, int heightSize) {\n    // Write your code here\n    return 0;\n}`,
+    cpp: `#include <vector>\n\nclass Solution {\npublic:\n    int maxArea(std::vector<int>& height) {\n        // Write your code here\n        return 0;\n    }\n};`,
+    java: `import java.util.*;\n\nclass Solution {\n    public int maxArea(int[] height) {\n        // Write your code here\n        return 0;\n    }\n}`
+  },
+  'prob-5': {
+    c: `#include <stdio.h>\n#include <stdlib.h>\n\nstruct ListNode* mergeKLists(struct ListNode** lists, int listsSize) {\n    // Write your code here\n    return NULL;\n}`,
+    cpp: `#include <vector>\n\nclass Solution {\npublic:\n    ListNode* mergeKLists(std::vector<ListNode*>& lists) {\n        // Write your code here\n        return nullptr;\n    }\n};`,
+    java: `import java.util.*;\n\nclass Solution {\n    public ListNode mergeKLists(ListNode[] lists) {\n        // Write your code here\n        return null;\n    }\n}`
   }
 };
 
@@ -271,9 +186,6 @@ export const problemService = {
     }
   },
 
-  /**
-   * Submit code solution to judge
-   */
   submitCode: async (id, payload) => {
     try {
       return await apiClient.post(`/problems/${id}/submit`, payload);
@@ -291,6 +203,38 @@ export const problemService = {
         timestamp: new Date().toISOString(),
         message: 'All test cases passed successfully!'
       };
+    }
+  },
+
+  /**
+   * Get an AI hint based on the user's current code
+   */
+  getHint: async (id, payload) => {
+    try {
+      const res = await apiClient.post(`/problems/${id}/hint`, payload);
+      return res.hint;
+    } catch (err) {
+      console.error('Failed to get hint:', err);
+      if (err.data && err.data.error) {
+        return err.data.error;
+      }
+      return 'The AI hint service is currently unavailable. Please try again later.';
+    }
+  },
+
+  /**
+   * Get an AI code review
+   */
+  getReview: async (id, payload) => {
+    try {
+      const res = await apiClient.post(`/problems/${id}/review`, payload);
+      return res.review;
+    } catch (err) {
+      console.error('Failed to get review:', err);
+      if (err.data && err.data.error) {
+        return err.data.error;
+      }
+      return 'The AI review service is currently unavailable. Please try again later.';
     }
   }
 };

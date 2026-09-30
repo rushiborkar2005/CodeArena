@@ -6,11 +6,13 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { ProblemsPage } from './pages/ProblemsPage';
 import { ProblemSolverPage } from './pages/ProblemSolverPage';
+import { ArenaSetupPage } from './pages/ArenaSetupPage';
+import { ArenaSolverPage } from './pages/ArenaSolverPage';
 import './index.css';
 
 function AppLayout() {
   const location = useLocation();
-  const isSolverPage = location.pathname.startsWith('/problems/') && location.pathname !== '/problems';
+  const isSolverPage = location.pathname.startsWith('/problems/') && location.pathname !== '/problems' || location.pathname.startsWith('/arena/');
 
   return (
     <div className="app-shell">
@@ -22,6 +24,8 @@ function AppLayout() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/problems" element={<ProblemsPage />} />
           <Route path="/problems/:id" element={<ProblemSolverPage />} />
+          <Route path="/arena" element={<ArenaSetupPage />} />
+          <Route path="/arena/:roomId" element={<ArenaSolverPage />} />
         </Routes>
       </main>
       {!isSolverPage && (

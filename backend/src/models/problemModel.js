@@ -1,118 +1,23 @@
-// Seed Online Judge Coding Problems
+import mongoose from 'mongoose';
+import { Problem } from './Problem.js';
+import { Submission } from './Submission.js';
+
+// Starter templates for compiler engine
 const starterTemplates = {
   'prob-1': {
-    c: `#include <stdio.h>
-#include <stdlib.h>
-
-/**
- * Note: The returned array must be malloced, assume caller calls free().
- */
-int* twoSum(int* nums, int numsSize, int target, int* returnSize) {
-    *returnSize = 2;
-    int* result = (int*)malloc(2 * sizeof(int));
-    for (int i = 0; i < numsSize; i++) {
-        for (int j = i + 1; j < numsSize; j++) {
-            if (nums[i] + nums[j] == target) {
-                result[0] = i;
-                result[1] = j;
-                return result;
-            }
-        }
-    }
-    return result;
-}`,
-    cpp: `#include <vector>
-#include <unordered_map>
-
-class Solution {
-public:
-    std::vector<int> twoSum(std::vector<int>& nums, int target) {
-        std::unordered_map<int, int> map;
-        for (int i = 0; i < nums.size(); i++) {
-            int diff = target - nums[i];
-            if (map.count(diff)) {
-                return {map[diff], i};
-            }
-            map[nums[i]] = i;
-        }
-        return {};
-    }
-};`,
-    java: `import java.util.HashMap;
-
-class Solution {
-    public int[] twoSum(int[] nums, int target) {
-        HashMap<Integer, Integer> map = new HashMap<>();
-        for (int i = 0; i < nums.length; i++) {
-            int diff = target - nums[i];
-            if (map.containsKey(diff)) {
-                return new int[] { map.get(diff), i };
-            }
-            map.put(nums[i], i);
-        }
-        return new int[]{};
-    }
-}`
+    c: `#include <stdio.h>\n#include <stdlib.h>\n\n/**\n * Note: The returned array must be malloced, assume caller calls free().\n */\nint* twoSum(int* nums, int numsSize, int target, int* returnSize) {\n    // Write your code here\n    *returnSize = 0;\n    return NULL;\n}`,
+    cpp: `#include <vector>\n\nclass Solution {\npublic:\n    std::vector<int> twoSum(std::vector<int>& nums, int target) {\n        // Write your code here\n        return {};\n    }\n};`,
+    java: `import java.util.*;\n\nclass Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your code here\n        return new int[]{};\n    }\n}`
   },
   'prob-2': {
-    c: `#include <stdbool.h>
-#include <string.h>
-
-bool isValid(char* s) {
-    int len = strlen(s);
-    char stack[len];
-    int top = -1;
-    for (int i = 0; i < len; i++) {
-        if (s[i] == '(' || s[i] == '{' || s[i] == '[') {
-            stack[++top] = s[i];
-        } else {
-            if (top == -1) return false;
-            if (s[i] == ')' && stack[top] != '(') return false;
-            if (s[i] == '}' && stack[top] != '{') return false;
-            if (s[i] == ']' && stack[top] != '[') return false;
-            top--;
-        }
-    }
-    return top == -1;
-}`,
-    cpp: `#include <stack>
-#include <unordered_map>
-#include <string>
-
-class Solution {
-public:
-    bool isValid(std::string s) {
-        std::stack<char> st;
-        std::unordered_map<char, char> map = {{')', '('}, {'}', '{'}, {']', '['}};
-        for (char c : s) {
-            if (map.count(c)) {
-                if (st.empty() || st.top() != map[c]) return false;
-                st.pop();
-            } else {
-                st.push(c);
-            }
-        }
-        return st.empty();
-    }
-};`,
-    java: `import java.util.Stack;
-
-class Solution {
-    public boolean isValid(String s) {
-        Stack<Character> stack = new Stack<>();
-        for (char c : s.toCharArray()) {
-            if (c == '(') stack.push(')');
-            else if (c == '{') stack.push('}');
-            else if (c == '[') stack.push(']');
-            else if (stack.isEmpty() || stack.pop() != c) return false;
-        }
-        return stack.isEmpty();
-    }
-}`
+    c: `#include <stdbool.h>\n#include <string.h>\n\nbool isValid(char* s) {\n    // Write your code here\n    return false;\n}`,
+    cpp: `#include <string>\n\nclass Solution {\npublic:\n    bool isValid(std::string s) {\n        // Write your code here\n        return false;\n    }\n};`,
+    java: `import java.util.*;\n\nclass Solution {\n    public boolean isValid(String s) {\n        // Write your code here\n        return false;\n    }\n}`
   }
 };
 
-const problems = [
+// Fallback in-memory problems array
+const inMemoryProblems = [
   {
     id: 'prob-1',
     title: 'Two Sum',
@@ -232,12 +137,31 @@ const problems = [
   }
 ];
 
-// In-memory submission store
-const userSubmissions = {};
+const inMemorySubmissions = {};
+
+const isDBConnected = () => mongoose.connection.readyState === 1;
 
 export const problemModel = {
   findAll: async ({ category, difficulty, search }) => {
-    let result = [...problems];
+    if (isDBConnected()) {
+      const query = {};
+      if (category) {
+        query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+      }
+      if (difficulty) {
+        query.difficulty = { $regex: new RegExp(`^${difficulty}$`, 'i') };
+      }
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { category: { $regex: search, $options: 'i' } }
+        ];
+      }
+      const problems = await Problem.find(query).lean();
+      return problems.map(p => ({ ...p, id: p.id || p._id.toString() }));
+    }
+
+    let result = [...inMemoryProblems];
     if (category) {
       result = result.filter(p => p.category.toLowerCase() === category.toLowerCase());
     }
@@ -252,15 +176,30 @@ export const problemModel = {
   },
 
   findById: async (idOrSlug) => {
-    const prob = problems.find(p => p.id === idOrSlug || p.slug === idOrSlug);
+    let prob = null;
+
+    if (isDBConnected()) {
+      const queryOr = [{ id: idOrSlug }, { slug: idOrSlug }];
+      if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
+        queryOr.push({ _id: idOrSlug });
+      }
+      const found = await Problem.findOne({ $or: queryOr }).lean();
+      if (found) {
+        prob = { ...found, id: found.id || found._id.toString() };
+      }
+    } else {
+      prob = inMemoryProblems.find(p => p.id === idOrSlug || p.slug === idOrSlug);
+    }
+
     if (!prob) return null;
-    
-    // Attach starter code boilerplates (C, C++, Java)
-    const templates = starterTemplates[prob.id] || {
-      c: `// Solution for ${prob.title} in C\n#include <stdio.h>\n#include <stdlib.h>\n\nvoid solve() {\n    // Write your code here\n}`,
-      cpp: `// Solution for ${prob.title} in C++\n#include <iostream>\n\nclass Solution {\npublic:\n    void solve() {\n        // Write your code here\n    }\n};`,
-      java: `// Solution for ${prob.title} in Java\nclass Solution {\n    public void solve() {\n        // Write your code here\n    }\n}`
-    };
+
+    const templates = (prob.starterTemplates && (prob.starterTemplates.c || prob.starterTemplates.cpp || prob.starterTemplates.java))
+      ? prob.starterTemplates
+      : starterTemplates[prob.id] || {
+          c: `// Solution for ${prob.title} in C\n#include <stdio.h>\n#include <stdlib.h>\n\nvoid solve() {\n    // Write your code here\n}`,
+          cpp: `// Solution for ${prob.title} in C++\n#include <iostream>\n\nclass Solution {\npublic:\n    void solve() {\n        // Write your code here\n    }\n};`,
+          java: `// Solution for ${prob.title} in Java\nclass Solution {\n    public void solve() {\n        // Write your code here\n    }\n}`
+        };
 
     return {
       ...prob,
@@ -269,19 +208,54 @@ export const problemModel = {
   },
 
   getSubmissions: async (problemId) => {
-    return userSubmissions[problemId] || [];
+    if (isDBConnected()) {
+      const subs = await Submission.find({ problemId }).sort({ createdAt: -1 }).lean();
+      return subs.map(s => ({
+        id: s.submissionId || s._id.toString(),
+        timestamp: s.timestamp || s.createdAt,
+        language: s.language,
+        code: s.code,
+        status: s.status,
+        runtime: s.runtime,
+        memory: s.memory,
+        passCount: s.passCount
+      }));
+    }
+    return inMemorySubmissions[problemId] || [];
   },
 
   addSubmission: async (problemId, submission) => {
-    if (!userSubmissions[problemId]) {
-      userSubmissions[problemId] = [];
+    const subId = 'sub-' + Date.now();
+    const timestamp = new Date().toISOString();
+
+    if (isDBConnected()) {
+      const newSub = await Submission.create({
+        submissionId: subId,
+        problemId,
+        language: submission.language,
+        code: submission.code,
+        status: submission.status,
+        runtime: submission.runtime,
+        memory: submission.memory,
+        passCount: submission.passCount,
+        timestamp
+      });
+      return {
+        id: newSub.submissionId,
+        timestamp: newSub.timestamp,
+        ...submission
+      };
+    }
+
+    if (!inMemorySubmissions[problemId]) {
+      inMemorySubmissions[problemId] = [];
     }
     const record = {
-      id: 'sub-' + Date.now(),
-      timestamp: new Date().toISOString(),
+      id: subId,
+      timestamp,
       ...submission
     };
-    userSubmissions[problemId].unshift(record);
+    inMemorySubmissions[problemId].unshift(record);
     return record;
   }
 };

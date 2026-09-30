@@ -224,3 +224,73 @@ export const submitProblemCode = async (req, res, next) => {
     next(error);
   }
 };
+
+import { callLLM } from '../services/aiService.js';
+
+/**
+ * @desc   Get AI hint for a problem
+ * @route  POST /api/problems/:id/hint
+ * @access Public
+ */
+export const getProblemHint = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { code, language = 'javascript' } = req.body;
+    const problem = await problemModel.findById(id);
+
+    if (!problem) {
+      return res.status(404).json({ message: 'Problem not found' });
+    }
+
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are an expert programming mentor. Your job is to give a helpful but subtle hint to a student working on a coding problem. Do NOT give them the direct answer or the full code. Give them a conceptual nudge.'
+      },
+      {
+        role: 'user',
+        content: `Problem: ${problem.title}\nDescription: ${problem.description}\nLanguage: ${language}\n\nStudent's current code:\n\`\`\`\n${code || '(Empty)'}\n\`\`\`\n\nPlease give a short, constructive hint.`
+      }
+    ];
+
+    const hint = await callLLM(messages);
+    res.status(200).json({ hint });
+  } catch (error) {
+    console.error('Hint error:', error.message);
+    res.status(500).json({ message: 'Failed to generate hint.', error: error.message });
+  }
+};
+
+/**
+ * @desc   Get AI code review/optimization
+ * @route  POST /api/problems/:id/review
+ * @access Public
+ */
+export const reviewProblemCode = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { code, language = 'javascript', status, runtime, memory } = req.body;
+    const problem = await problemModel.findById(id);
+
+    if (!problem) {
+      return res.status(404).json({ message: 'Problem not found' });
+    }
+
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are an expert senior software engineer. Review the submitted code. If it failed, explain why gently. If it passed, suggest time/space complexity improvements, better variable naming, or more idiomatic constructs.'
+      },
+      {
+        role: 'user',
+        content: `Problem: ${problem.title}\nDescription: ${problem.description}\nLanguage: ${language}\nStatus: ${status}\nRuntime: ${runtime}\nMemory: ${memory}\n\nSubmitted code:\n\`\`\`\n${code}\n\`\`\`\n\nPlease review this code.`
+      }
+    ];
+
+    const review = await callLLM(messages);
+    res.status(200).json({ review });
+  } catch (error) {
+    console.error('Review error:', error.message);
+    res.status(500).json({ message: 'Failed to generate review.', error: error.message });
+  }
+};

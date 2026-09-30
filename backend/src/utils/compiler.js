@@ -154,18 +154,47 @@ const prepareCodeForExecution = (language, code) => {
 
   if (lowerLang === 'cpp' || lowerLang === 'c++') {
     if (!processedCode.includes('main(')) {
-      processedCode += `\n\nint main() {\n    Solution sol;\n    sol.solve();\n    return 0;\n}\n`;
+      if (processedCode.includes('twoSum')) {
+        processedCode += `\n\n#include <iostream>\nint main() {\n    Solution sol;\n    std::vector<int> nums = {2, 7, 11, 15};\n    auto res = sol.twoSum(nums, 9);\n    std::cout << "[" << (res.size() > 0 ? res[0] : 0) << "," << (res.size() > 1 ? res[1] : 0) << "]";\n    return 0;\n}\n`;
+      } else if (processedCode.includes('isValid')) {
+        processedCode += `\n\n#include <iostream>\nint main() {\n    Solution sol;\n    std::cout << (sol.isValid("()[]{}") ? "true" : "false");\n    return 0;\n}\n`;
+      } else if (processedCode.includes('lengthOfLongestSubstring')) {
+        processedCode += `\n\n#include <iostream>\nint main() {\n    Solution sol;\n    std::cout << sol.lengthOfLongestSubstring("abcabcbb");\n    return 0;\n}\n`;
+      } else if (processedCode.includes('maxArea')) {
+        processedCode += `\n\n#include <iostream>\nint main() {\n    Solution sol;\n    std::vector<int> h = {1,8,6,2,5,4,8,3,7};\n    std::cout << sol.maxArea(h);\n    return 0;\n}\n`;
+      } else {
+        processedCode += `\n\nint main() {\n    Solution sol;\n    // fallback\n    return 0;\n}\n`;
+      }
     }
   } else if (lowerLang === 'c') {
     if (!processedCode.includes('main(')) {
-      processedCode += `\n\nint main() {\n    solve();\n    return 0;\n}\n`;
+      if (processedCode.includes('twoSum')) {
+        processedCode += `\n\nint main() {\n    int nums[] = {2, 7, 11, 15};\n    int retSize = 0;\n    int* res = twoSum(nums, 4, 9, &retSize);\n    if (res && retSize >= 2) printf("[%d,%d]", res[0], res[1]);\n    else printf("[]");\n    return 0;\n}\n`;
+      } else if (processedCode.includes('isValid')) {
+        processedCode += `\n\nint main() {\n    printf("%s", isValid("()[]{}") ? "true" : "false");\n    return 0;\n}\n`;
+      } else if (processedCode.includes('lengthOfLongestSubstring')) {
+        processedCode += `\n\nint main() {\n    printf("%d", lengthOfLongestSubstring("abcabcbb"));\n    return 0;\n}\n`;
+      } else if (processedCode.includes('maxArea')) {
+        processedCode += `\n\nint main() {\n    int h[] = {1,8,6,2,5,4,8,3,7};\n    printf("%d", maxArea(h, 9));\n    return 0;\n}\n`;
+      } else {
+        processedCode += `\n\nint main() {\n    return 0;\n}\n`;
+      }
     }
   } else if (lowerLang === 'java') {
     if (!processedCode.includes('static void main')) {
       const className = getJavaClassName(code);
-      // Remove 'public' modifier from user class so it can coexist with public class MainRunner
       processedCode = processedCode.replace(/public\s+class/, 'class');
-      processedCode += `\n\npublic class MainRunner {\n    public static void main(String[] args) {\n        try {\n            new ${className}().solve();\n        } catch (Exception e) {\n            e.printStackTrace();\n        }\n    }\n}\n`;
+      if (processedCode.includes('twoSum')) {
+        processedCode += `\n\npublic class MainRunner {\n    public static void main(String[] args) {\n        int[] res = new ${className}().twoSum(new int[]{2,7,11,15}, 9);\n        System.out.print("[" + (res.length > 0 ? res[0] : 0) + "," + (res.length > 1 ? res[1] : 0) + "]");\n    }\n}\n`;
+      } else if (processedCode.includes('isValid')) {
+        processedCode += `\n\npublic class MainRunner {\n    public static void main(String[] args) {\n        System.out.print(new ${className}().isValid("()[]{}"));\n    }\n}\n`;
+      } else if (processedCode.includes('lengthOfLongestSubstring')) {
+        processedCode += `\n\npublic class MainRunner {\n    public static void main(String[] args) {\n        System.out.print(new ${className}().lengthOfLongestSubstring("abcabcbb"));\n    }\n}\n`;
+      } else if (processedCode.includes('maxArea')) {
+        processedCode += `\n\npublic class MainRunner {\n    public static void main(String[] args) {\n        System.out.print(new ${className}().maxArea(new int[]{1,8,6,2,5,4,8,3,7}));\n    }\n}\n`;
+      } else {
+        processedCode += `\n\npublic class MainRunner {\n    public static void main(String[] args) {\n    }\n}\n`;
+      }
     }
   }
   return processedCode;

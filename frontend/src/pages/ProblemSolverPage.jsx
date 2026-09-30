@@ -35,6 +35,12 @@ export const ProblemSolverPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [executionResult, setExecutionResult] = useState(null);
 
+  // AI Features State
+  const [isFetchingAi, setIsFetchingAi] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiModalTitle, setAiModalTitle] = useState('');
+  const [aiModalContent, setAiModalContent] = useState('');
+
   useEffect(() => {
     fetchProblemDetails();
   }, [id]);
@@ -180,6 +186,46 @@ export const ProblemSolverPage = () => {
     }
   };
 
+  const handleGetHint = async () => {
+    if (!problem) return;
+    setIsFetchingAi(true);
+    setAiModalTitle('AI Hint');
+    setAiModalContent('Thinking...');
+    setShowAiModal(true);
+    
+    try {
+      const hint = await problemService.getHint(problem.id, { code, language });
+      setAiModalContent(hint);
+    } catch (err) {
+      setAiModalContent('Failed to generate hint.');
+    } finally {
+      setIsFetchingAi(false);
+    }
+  };
+
+  const handleGetReview = async () => {
+    if (!problem || !executionResult) return;
+    setIsFetchingAi(true);
+    setAiModalTitle('AI Code Review');
+    setAiModalContent('Analyzing your code...');
+    setShowAiModal(true);
+
+    try {
+      const review = await problemService.getReview(problem.id, { 
+        code, 
+        language, 
+        status: executionResult.status,
+        runtime: executionResult.runtime,
+        memory: executionResult.memory
+      });
+      setAiModalContent(review);
+    } catch (err) {
+      setAiModalContent('Failed to generate code review.');
+    } finally {
+      setIsFetchingAi(false);
+    }
+  };
+
   const getDifficultyClass = (diff) => {
     switch (diff?.toLowerCase()) {
       case 'easy': return 'diff-easy';
@@ -268,6 +314,11 @@ export const ProblemSolverPage = () => {
 
           <button onClick={handleResetCode} className="btn-icon-control" title="Reset starter code">
             <RotateCcw size={15} />
+          </button>
+
+          <button onClick={handleGetHint} disabled={isFetchingAi} className="btn-secondary" style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
+            <Lightbulb size={14} />
+            <span>Hint</span>
           </button>
 
           {/* Action Buttons */}
@@ -496,6 +547,11 @@ export const ProblemSolverPage = () => {
                             <h3>{executionResult.status}</h3>
                             <span>{executionResult.message || `Testcases: ${executionResult.testcasesPassed || '1 / 1'}`}</span>
                           </div>
+                          
+                          <button onClick={handleGetReview} disabled={isFetchingAi} className="btn-secondary" style={{marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '5px 10px'}}>
+                            <Lightbulb size={14} style={{display: 'inline', marginRight: '5px', verticalAlign: 'middle'}}/>
+                            AI Review
+                          </button>
                         </div>
 
                         {/* Metrics Bar */}
@@ -543,6 +599,29 @@ export const ProblemSolverPage = () => {
           </div>
         </div>
       </div>
+
+      {showAiModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2>{aiModalTitle}</h2>
+              <button className="modal-close-btn" onClick={() => setShowAiModal(false)}>
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+              {isFetchingAi ? (
+                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                  <div className="spinner" style={{width: '20px', height: '20px', borderWidth: '2px'}}></div>
+                  <span>{aiModalContent}</span>
+                </div>
+              ) : (
+                <p>{aiModalContent}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

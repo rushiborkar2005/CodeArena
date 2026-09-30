@@ -34,6 +34,10 @@ export const Navbar = () => {
             <Terminal size={16} />
             <span>Problems</span>
           </Link>
+          <Link to="/arena" className={`nav-link ${isActive('/arena') ? 'active' : ''}`}>
+            <Code2 size={16} />
+            <span>1v1 Arena</span>
+          </Link>
         </nav>
 
         {/* User Auth Section */}
