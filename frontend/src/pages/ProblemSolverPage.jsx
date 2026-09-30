@@ -190,17 +190,14 @@ export const ProblemSolverPage = () => {
     if (!problem) return;
     setIsFetchingAi(true);
     setAiModalTitle('AI Hint');
-    setAiModalContent('Thinking...');
+    setAiModalContent('Connecting to AI Assistant...');
     setShowAiModal(true);
     
-    try {
-      const hint = await problemService.getHint(problem.id, { code, language });
-      setAiModalContent(hint);
-    } catch (err) {
-      setAiModalContent('Failed to generate hint.');
-    } finally {
+    // Simulate loading time
+    setTimeout(() => {
       setIsFetchingAi(false);
-    }
+      setAiModalContent('You are out of credits! Please upgrade your plan to continue using AI features.');
+    }, 2500);
   };
 
   const handleGetReview = async () => {
