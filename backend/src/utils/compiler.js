@@ -1,141 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-import { exec, spawn } from 'child_process';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Root path for submitted codes directory: backend/submitted_codes
-const SUBMITTED_CODES_DIR = path.resolve(__dirname, '../../submitted_codes');
-
-// Ensure submitted_codes directory exists
-if (!fs.existsSync(SUBMITTED_CODES_DIR)) {
-  fs.mkdirSync(SUBMITTED_CODES_DIR, { recursive: true });
-}
-
-/**
- * Helper to execute shell command as a promise with timeout
- */
-const executeCommand = (cmd, options = {}, timeoutMs = 7000) => {
-  return new Promise((resolve) => {
-    const start = Date.now();
-    exec(cmd, { timeout: timeoutMs, maxBuffer: 2 * 1024 * 1024, ...options }, (error, stdout, stderr) => {
-      const duration = Date.now() - start;
-      if (error) {
-        if (error.killed || error.signal === 'SIGTERM') {
-          return resolve({
-            success: false,
-            timedOut: true,
-            error: 'Time Limit Exceeded (Timeout > ' + timeoutMs + 'ms)',
-            stdout: stdout || '',
-            stderr: stderr || 'Execution timed out.',
-            duration
-          });
-        }
-        return resolve({
-          success: false,
-          timedOut: false,
-          error: error.message,
-          stdout: stdout || '',
-          stderr: stderr || error.message,
-          duration
-        });
-      }
-      resolve({
-        success: true,
-        timedOut: false,
-        stdout,
-        stderr,
-        duration
-      });
-    });
-  });
-};
-
-/**
- * Execute compiled binary or script passing stdin input via spawn process
- */
-const runProcessWithInput = (command, args = [], cwd, inputStr = '', timeoutMs = 5000) => {
-  return new Promise((resolve) => {
-    const startTime = Date.now();
-    let stdoutData = '';
-    let stderrData = '';
-    let isFinished = false;
-
-    const child = spawn(command, args, { cwd, shell: true });
-
-    const timer = setTimeout(() => {
-      if (!isFinished) {
-        isFinished = true;
-        child.kill();
-        resolve({
-          success: false,
-          timedOut: true,
-          status: 'Time Limit Exceeded',
-          stdout: stdoutData,
-          stderr: 'Time limit exceeded (> ' + timeoutMs + 'ms)',
-          duration: Date.now() - startTime
-        });
-      }
-    }, timeoutMs);
-
-    if (inputStr) {
-      child.stdin.write(inputStr);
-    }
-    child.stdin.end();
-
-    child.stdout.on('data', (data) => {
-      stdoutData += data.toString();
-    });
-
-    child.stderr.on('data', (data) => {
-      stderrData += data.toString();
-    });
-
-    child.on('error', (err) => {
-      if (!isFinished) {
-        isFinished = true;
-        clearTimeout(timer);
-        resolve({
-          success: false,
-          timedOut: false,
-          status: 'Runtime Error',
-          stdout: stdoutData,
-          stderr: err.message,
-          duration: Date.now() - startTime
-        });
-      }
-    });
-
-    child.on('close', (code) => {
-      if (!isFinished) {
-        isFinished = true;
-        clearTimeout(timer);
-        const duration = Date.now() - startTime;
-        if (code !== 0 && !stdoutData) {
-          resolve({
-            success: false,
-            timedOut: false,
-            status: 'Runtime Error',
-            stdout: stdoutData,
-            stderr: stderrData || `Process exited with code ${code}`,
-            duration
-          });
-        } else {
-          resolve({
-            success: true,
-            timedOut: false,
-            status: 'Success',
-            stdout: stdoutData,
-            stderr: stderrData,
-            duration
-          });
-        }
-      }
-    });
-  });
-};
+import axios from 'axios';
 
 /**
  * Extract Java public/main class name if present
@@ -155,13 +18,13 @@ const prepareCodeForExecution = (language, code) => {
   if (lowerLang === 'cpp' || lowerLang === 'c++') {
     if (!processedCode.includes('main(')) {
       if (processedCode.includes('twoSum')) {
-        processedCode += `\n\n#include <iostream>\nint main() {\n    Solution sol;\n    std::vector<int> nums = {2, 7, 11, 15};\n    auto res = sol.twoSum(nums, 9);\n    std::cout << "[" << (res.size() > 0 ? res[0] : 0) << "," << (res.size() > 1 ? res[1] : 0) << "]";\n    return 0;\n}\n`;
+        processedCode += `\n\n#include <iostream>\n#include <vector>\nint main() {\n    Solution sol;\n    std::vector<int> nums = {2, 7, 11, 15};\n    auto res = sol.twoSum(nums, 9);\n    std::cout << "[" << (res.size() > 0 ? res[0] : 0) << "," << (res.size() > 1 ? res[1] : 0) << "]";\n    return 0;\n}\n`;
       } else if (processedCode.includes('isValid')) {
         processedCode += `\n\n#include <iostream>\nint main() {\n    Solution sol;\n    std::cout << (sol.isValid("()[]{}") ? "true" : "false");\n    return 0;\n}\n`;
       } else if (processedCode.includes('lengthOfLongestSubstring')) {
         processedCode += `\n\n#include <iostream>\nint main() {\n    Solution sol;\n    std::cout << sol.lengthOfLongestSubstring("abcabcbb");\n    return 0;\n}\n`;
       } else if (processedCode.includes('maxArea')) {
-        processedCode += `\n\n#include <iostream>\nint main() {\n    Solution sol;\n    std::vector<int> h = {1,8,6,2,5,4,8,3,7};\n    std::cout << sol.maxArea(h);\n    return 0;\n}\n`;
+        processedCode += `\n\n#include <iostream>\n#include <vector>\nint main() {\n    Solution sol;\n    std::vector<int> h = {1,8,6,2,5,4,8,3,7};\n    std::cout << sol.maxArea(h);\n    return 0;\n}\n`;
       } else {
         processedCode += `\n\nint main() {\n    Solution sol;\n    // fallback\n    return 0;\n}\n`;
       }
@@ -201,48 +64,30 @@ const prepareCodeForExecution = (language, code) => {
 };
 
 /**
- * Main compiler and code execution function
- *
- * @param {Object} params
- * @param {string} params.language - c, cpp, java, python, javascript
- * @param {string} params.code - User submitted source code
- * @param {string} params.input - Standard input to pass to the program
- * @returns {Promise<Object>} Execution result object
+ * Execute compiled binary or script passing stdin input using JDoodle API
  */
 export const executeCode = async ({ language = 'javascript', code = '', input = '' }) => {
-  const jobId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-  const jobDir = path.join(SUBMITTED_CODES_DIR, jobId);
-
-  // Create isolated directory for this submission inside backend/submitted_codes
-  fs.mkdirSync(jobDir, { recursive: true });
-
   const normLang = (language || '').toLowerCase();
   const readyCode = prepareCodeForExecution(normLang, code);
 
-  let sourceFile = '';
-  let exeFile = '';
-  let mainClassName = 'MainRunner';
-
-  // Determine file names and paths based on programming language
+  let jdoodleLang = 'nodejs';
+  let versionIndex = '0';
+  
   if (normLang === 'c') {
-    sourceFile = path.join(jobDir, 'solution.c');
-    exeFile = path.join(jobDir, process.platform === 'win32' ? 'solution.exe' : 'solution.out');
+    jdoodleLang = 'c';
+    versionIndex = '5'; // GCC 9.1.0
   } else if (normLang === 'cpp' || normLang === 'c++') {
-    sourceFile = path.join(jobDir, 'solution.cpp');
-    exeFile = path.join(jobDir, process.platform === 'win32' ? 'solution.exe' : 'solution.out');
+    jdoodleLang = 'cpp';
+    versionIndex = '5'; // GCC 9.1.0
   } else if (normLang === 'java') {
-    if (readyCode.includes('static void main')) {
-      const publicClassMatch = readyCode.match(/public\s+class\s+([A-Za-z0-9_]+)/);
-      const classMatch = readyCode.match(/class\s+([A-Za-z0-9_]+)/);
-      mainClassName = publicClassMatch ? publicClassMatch[1] : (classMatch ? classMatch[1] : 'Main');
-    } else {
-      mainClassName = 'MainRunner';
-    }
-    sourceFile = path.join(jobDir, `${mainClassName}.java`);
+    jdoodleLang = 'java';
+    versionIndex = '4'; // JDK 17.0.1
   } else if (normLang === 'python' || normLang === 'py') {
-    sourceFile = path.join(jobDir, 'solution.py');
+    jdoodleLang = 'python3';
+    versionIndex = '3'; // Python 3.9.9
   } else if (normLang === 'javascript' || normLang === 'js') {
-    sourceFile = path.join(jobDir, 'solution.js');
+    jdoodleLang = 'nodejs';
+    versionIndex = '4'; // Node 17.1.0
   } else {
     return {
       status: 'Error',
@@ -250,140 +95,88 @@ export const executeCode = async ({ language = 'javascript', code = '', input = 
       stdout: '',
       stderr: `Language '${language}' is not supported.`,
       runtime: '0 ms',
+      memory: '0 MB'
+    };
+  }
+
+  const clientId = process.env.JDOODLE_CLIENT_ID;
+  const clientSecret = process.env.JDOODLE_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    return {
+      status: 'Error',
+      output: 'JDoodle API credentials are missing in the server environment. Please set JDOODLE_CLIENT_ID and JDOODLE_CLIENT_SECRET in your backend .env file.',
+      stdout: '',
+      stderr: 'Missing JDoodle API keys.',
+      runtime: '0 ms',
       memory: '0 MB',
       savedFilePath: ''
     };
   }
 
-  // Save the source code file into backend/submitted_codes/job_<id>/
-  fs.writeFileSync(sourceFile, readyCode, 'utf-8');
-
-  let compileRes = null;
-  let runRes = null;
-
   try {
-    // ------------------- C / C++ -------------------
-    if (normLang === 'c' || normLang === 'cpp' || normLang === 'c++') {
-      const compilerCmd = normLang === 'c' ? 'gcc' : 'g++';
-      const compileCommand = `${compilerCmd} "${sourceFile}" -static -o "${exeFile}"`;
-      
-      compileRes = await executeCommand(compileCommand, { cwd: jobDir });
+    const response = await axios.post('https://api.jdoodle.com/v1/execute', {
+      clientId,
+      clientSecret,
+      script: readyCode,
+      language: jdoodleLang,
+      versionIndex,
+      stdin: input
+    });
 
-      if (!compileRes.success) {
-        const isMissingCompiler = compileRes.stderr.includes('not recognized') || compileRes.stderr.includes('command not found');
-        return {
-          status: 'Compilation Error',
-          output: compileRes.stderr || compileRes.error,
-          stdout: isMissingCompiler 
-            ? `[Notice] Compiler '${compilerCmd}' is not installed on system PATH.\nPlease install ${compilerCmd.toUpperCase()} compiler to compile ${normLang.toUpperCase()} code.` 
-            : '',
-          stderr: compileRes.stderr || compileRes.error,
-          runtime: `${compileRes.duration} ms`,
-          memory: '0 MB',
-          savedFilePath: sourceFile
-        };
-      }
+    const data = response.data;
 
-      runRes = await runProcessWithInput(`"${exeFile}"`, [], jobDir, input);
-    }
-    // ------------------- JAVA -------------------
-    else if (normLang === 'java') {
-      const compileCommand = `javac "${sourceFile}"`;
-      compileRes = await executeCommand(compileCommand, { cwd: jobDir });
-
-      if (!compileRes.success) {
-        const isMissingCompiler = compileRes.stderr.includes('not recognized') || compileRes.stderr.includes('command not found');
-        return {
-          status: 'Compilation Error',
-          output: compileRes.stderr || compileRes.error,
-          stdout: isMissingCompiler 
-            ? `[Notice] Java compiler 'javac' is not installed on system PATH.\nPlease install JDK to compile Java code.` 
-            : '',
-          stderr: compileRes.stderr || compileRes.error,
-          runtime: `${compileRes.duration} ms`,
-          memory: '0 MB',
-          savedFilePath: sourceFile
-        };
-      }
-
-      runRes = await runProcessWithInput('java', ['-cp', `"${jobDir}"`, mainClassName], jobDir, input);
-    }
-    // ------------------- PYTHON -------------------
-    else if (normLang === 'python' || normLang === 'py') {
-      const pyCommand = process.platform === 'win32' ? 'python' : 'python3';
-      runRes = await runProcessWithInput(pyCommand, [`"${sourceFile}"`], jobDir, input);
-      
-      if (!runRes.success && (runRes.stderr.includes('not recognized') || runRes.stderr.includes('command not found'))) {
-        return {
-          status: 'Runtime Error',
-          output: `Python interpreter ('${pyCommand}') was not found on server system PATH.`,
-          stdout: '',
-          stderr: runRes.stderr,
-          runtime: '0 ms',
-          memory: '0 MB',
-          savedFilePath: sourceFile
-        };
-      }
-    }
-    // ------------------- JAVASCRIPT / NODE -------------------
-    else if (normLang === 'javascript' || normLang === 'js') {
-      runRes = await runProcessWithInput('node', [`"${sourceFile}"`], jobDir, input);
-    }
-
-    // Determine status & runtime metrics
-    const status = runRes.timedOut 
-      ? 'Time Limit Exceeded' 
-      : (!runRes.success && runRes.status === 'Runtime Error' ? 'Runtime Error' : 'Accepted');
+    let outputText = data.output || '';
+    let status = 'Accepted';
+    let stdout = '';
+    let stderr = '';
     
-    const memoryMb = (Math.random() * 2 + 18).toFixed(1); // Approximate memory usage metric
-    const outputText = (runRes.stdout || '').trim();
+    // Determine JDoodle Error status
+    if (data.statusCode !== 200) {
+        status = 'Error';
+        stderr = outputText;
+    } else {
+        if (outputText.includes('Exception in thread') || outputText.includes('Traceback (most recent call last):')) {
+            status = 'Runtime Error';
+            stderr = outputText;
+        } else if (outputText.includes('error:') && (jdoodleLang === 'c' || jdoodleLang === 'cpp')) {
+            status = 'Compilation Error';
+            stderr = outputText;
+        } else if (data.memory === null && data.cpuTime === null) {
+            status = 'Compilation Error';
+            stderr = outputText;
+        } else {
+            stdout = outputText;
+        }
+    }
 
     return {
       status,
-      output: outputText || (runRes.stderr ? `Error: ${runRes.stderr}` : 'No output produced.'),
-      stdout: runRes.stdout || '',
-      stderr: runRes.stderr || '',
-      runtime: `${runRes.duration} ms`,
-      memory: `${memoryMb} MB`,
-      savedFilePath: sourceFile
+      output: outputText.trim() || 'No output produced.',
+      stdout: stdout.trim(),
+      stderr: stderr.trim(),
+      runtime: data.cpuTime ? `${Math.round(parseFloat(data.cpuTime) * 1000)} ms` : '0 ms',
+      memory: data.memory ? `${(data.memory / 1024).toFixed(1)} MB` : '0 MB',
+      savedFilePath: ''
     };
 
   } catch (err) {
+    const errorMsg = err.response?.data?.error || err.message;
     return {
       status: 'Error',
-      output: err.message,
+      output: `API Request Failed: ${errorMsg}`,
       stdout: '',
-      stderr: err.stack || err.message,
+      stderr: `API Request Failed: ${errorMsg}`,
       runtime: '0 ms',
       memory: '0 MB',
-      savedFilePath: sourceFile
+      savedFilePath: ''
     };
-  } finally {
-    // Automatically cleanup temporary build files and directory
-    try {
-      if (fs.existsSync(jobDir)) {
-        fs.rmSync(jobDir, { recursive: true, force: true });
-      }
-    } catch (cleanupErr) {
-      console.error('[Compiler Cleanup Error]:', cleanupErr.message);
-    }
   }
 };
 
 /**
- * Utility to clear all previous submission files in submitted_codes directory
+ * Utility to clear all previous submission files. No longer needed since JDoodle is used, but kept for interface compatibility.
  */
 export const clearAllSubmittedCodes = () => {
-  if (fs.existsSync(SUBMITTED_CODES_DIR)) {
-    const files = fs.readdirSync(SUBMITTED_CODES_DIR);
-    for (const file of files) {
-      const fullPath = path.join(SUBMITTED_CODES_DIR, file);
-      try {
-        fs.rmSync(fullPath, { recursive: true, force: true });
-      } catch (err) {
-        console.error(`Failed to delete ${fullPath}:`, err.message);
-      }
-    }
-  }
+  // Deprecated: No longer managing local files
 };
-
