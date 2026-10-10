@@ -24,10 +24,15 @@ export const ArenaSolverPage = () => {
   const [roomUsers, setRoomUsers] = useState([]);
   const [partnerEvents, setPartnerEvents] = useState([]); // List of messages like "UserX submitted code", "UserX got an error"
 
-  // Problem state (Using a default problem for arena for now, or letting them select. The prompt says "select question and solve together". Let's load problem 1 by default, or just hardcode it. Ideally we should have a problem selection, but to keep it simple, load prob-1)
+  // Problem state
   const [problem, setProblem] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Lobby State
+  const [isStarted, setIsStarted] = useState(false);
+  const [problemsList, setProblemsList] = useState([]);
+  const [selectedProblemId, setSelectedProblemId] = useState('');
 
   // Workspace controls
   const [language, setLanguage] = useState('cpp');
@@ -52,7 +57,15 @@ export const ArenaSolverPage = () => {
       return;
     }
     
-    fetchProblemDetails();
+    // Fetch problem list for the lobby
+    const fetchProblemsList = async () => {
+      const data = await problemService.getProblems();
+      setProblemsList(data.problems || []);
+      if (data.problems && data.problems.length > 0) {
+        setSelectedProblemId(data.problems[0].id);
+      }
+    };
+    fetchProblemsList();
 
     // Init Socket
     const newSocket = io(SOCKET_URL);
@@ -85,6 +98,11 @@ export const ArenaSolverPage = () => {
       }
     });
 
+    newSocket.on('arena_started', ({ problemId }) => {
+      setIsStarted(true);
+      fetchProblemDetails(problemId);
+    });
+
     return () => {
       newSocket.disconnect();
     };
@@ -111,11 +129,10 @@ export const ArenaSolverPage = () => {
     }
   };
 
-  const fetchProblemDetails = async () => {
+  const fetchProblemDetails = async (id) => {
     setLoading(true);
     try {
-      // In a real app, users might select a problem. Here we use prob-1 for the arena
-      const data = await problemService.getProblemById('prob-1');
+      const data = await problemService.getProblemById(id);
       setProblem(data);
       setTestInput(data.sampleInput || '');
       setCode(data.starterTemplates?.[language] || `// Arena ready`);
@@ -201,6 +218,72 @@ export const ArenaSolverPage = () => {
       <div className="solver-loading-screen">
         <div className="spinner"></div>
         <p>Loading Arena Workspace...</p>
+      </div>
+    );
+  }
+
+  if (!isStarted) {
+    return (
+      <div className="page-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <div className="auth-card" style={{ maxWidth: '600px', width: '100%', textAlign: 'center' }}>
+          <div className="auth-header">
+            <Users size={40} className="text-primary" style={{ margin: '0 auto 1rem', display: 'block' }} />
+            <h1>Arena Lobby: {roomId}</h1>
+            <p>Wait for your opponent and select a challenge</p>
+          </div>
+
+          <div style={{ marginTop: '2rem', textAlign: 'left', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px' }}>
+            <h3 style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>Players Joined</span>
+              <span className="text-primary">{roomUsers.length}/2</span>
+            </h3>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {roomUsers.map((u, i) => (
+                <li key={u.id} style={{ padding: '0.5rem 0', borderBottom: i < roomUsers.length - 1 ? '1px solid var(--border-color)' : 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--accent-primary)', color: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                    {u.username[0].toUpperCase()}
+                  </div>
+                  <span>{u.username} {u.id === socket?.id && '(You)'}</span>
+                </li>
+              ))}
+              {roomUsers.length < 2 && (
+                <li style={{ padding: '0.5rem 0', color: 'var(--text-muted)', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px dashed var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    ?
+                  </div>
+                  Waiting for opponent...
+                </li>
+              )}
+            </ul>
+          </div>
+
+          <div style={{ marginTop: '2rem', textAlign: 'left' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem' }}>Select Problem:</label>
+            <select 
+              className="language-select" 
+              style={{ width: '100%', padding: '10px', backgroundColor: 'var(--bg-secondary)' }}
+              value={selectedProblemId}
+              onChange={(e) => setSelectedProblemId(e.target.value)}
+            >
+              {problemsList.map(p => (
+                <option key={p.id} value={p.id}>{p.title} ({p.difficulty})</option>
+              ))}
+            </select>
+          </div>
+
+          <button 
+            className="btn-primary" 
+            style={{ width: '100%', padding: '15px', marginTop: '2rem', fontSize: '1.1rem', opacity: roomUsers.length === 2 ? 1 : 0.5, cursor: roomUsers.length === 2 ? 'pointer' : 'not-allowed' }}
+            disabled={roomUsers.length !== 2}
+            onClick={() => {
+              if (roomUsers.length === 2 && socket) {
+                socket.emit('start_arena', { roomId, problemId: selectedProblemId });
+              }
+            }}
+          >
+            Start Arena Battle
+          </button>
+        </div>
       </div>
     );
   }

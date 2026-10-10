@@ -34,6 +34,10 @@ export const setupSockets = (io) => {
       });
     });
 
+    socket.on('start_arena', ({ roomId, problemId }) => {
+      io.to(roomId).emit('arena_started', { problemId });
+    });
+
     socket.on('code_change', ({ roomId, code }) => {
       // (Optional) if they want to see each other's code live, not strictly requested but nice to have. The requirement says "submit code other should know". We can skip real-time sync if not required, but let's keep it minimal if needed.
     });
